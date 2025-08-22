@@ -21,14 +21,14 @@ TurtleBot3에 초음파 센서와 LED 피드백을 추가한 ROS2 펌웨어입�
 
 ### 초음파 센서
 - **좌측 센서**: 
-  - Trig: D2
-  - Echo: D3
+  - Trig: D5
+  - Echo: D2
 - **전방 센서**: 
-  - Trig: D4
-  - Echo: D5
-- **우측 센서**: 
   - Trig: D6
-  - Echo: D7
+  - Echo: D3
+- **우측 센서**: 
+  - Trig: D7
+  - Echo: D4
 
 ### RGB LED
 - **Red**: D8
