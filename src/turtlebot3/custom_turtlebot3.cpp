@@ -61,6 +61,16 @@ static const TB3ModelInfo waffle_with_manipulator_info = {
   true,
 };
 
+static const TB3ModelInfo four_wheel_info = {
+  "FourWheel",
+  4,
+  0.033,
+  0.287,
+  0.1435,
+  0.220,
+  false,
+};
+
 
 /*******************************************************************************
 * Declaration for motors
@@ -73,9 +83,9 @@ static float max_linear_velocity, min_linear_velocity;
 static float max_angular_velocity, min_angular_velocity;
 
 static float goal_velocity[VelocityType::TYPE_NUM_MAX] = {0.0, 0.0};
-static float goal_velocity_from_cmd[MortorLocation::MOTOR_NUM_MAX] = {0.0, 0.0};
-static float goal_velocity_from_rc100[MortorLocation::MOTOR_NUM_MAX] = {0.0, 0.0};
-static float goal_velocity_from_button[MortorLocation::MOTOR_NUM_MAX] = {0.0, 0.0};
+static float goal_velocity_from_cmd[MortorLocation::MOTOR_NUM_MAX] = {0.0, 0.0, 0.0, 0.0};
+static float goal_velocity_from_rc100[MortorLocation::MOTOR_NUM_MAX] = {0.0, 0.0, 0.0, 0.0};
+static float goal_velocity_from_button[MortorLocation::MOTOR_NUM_MAX] = {0.0, 0.0, 0.0, 0.0};
 
 static void update_goal_velocity_from_3values(void);
 static void test_motors_with_buttons(uint8_t buttons);
@@ -172,12 +182,18 @@ enum ControlTableItemAddr{
   ADDR_ORIENTATION_Y      = 104,
   ADDR_ORIENTATION_Z      = 108,
   
-  ADDR_PRESENT_CURRENT_L  = 120,
-  ADDR_PRESENT_CURRENT_R  = 124,
-  ADDR_PRESENT_VELOCITY_L = 128,
-  ADDR_PRESENT_VELOCITY_R = 132,
-  ADDR_PRESENT_POSITION_L = 136,
-  ADDR_PRESENT_POSITION_R = 140,
+  ADDR_PRESENT_CURRENT_FL  = 120,
+  ADDR_PRESENT_CURRENT_FR  = 124,
+  ADDR_PRESENT_CURRENT_RL  = 125,
+  ADDR_PRESENT_CURRENT_RR  = 126,
+  ADDR_PRESENT_VELOCITY_FL = 128,
+  ADDR_PRESENT_VELOCITY_FR = 132,
+  ADDR_PRESENT_VELOCITY_RL = 133,
+  ADDR_PRESENT_VELOCITY_RR = 134,
+  ADDR_PRESENT_POSITION_FL = 136,
+  ADDR_PRESENT_POSITION_FR = 140,
+  ADDR_PRESENT_POSITION_RL = 141,
+  ADDR_PRESENT_POSITION_RR = 142,
   
   ADDR_MOTOR_CONNECT      = 148,
   ADDR_MOTOR_TORQUE       = 149,
@@ -187,8 +203,10 @@ enum ControlTableItemAddr{
   ADDR_CMD_VEL_ANGULAR_X  = 162,
   ADDR_CMD_VEL_ANGULAR_Y  = 166,
   ADDR_CMD_VEL_ANGULAR_Z  = 170,
-  ADDR_PROFILE_ACC_L      = 174,
-  ADDR_PROFILE_ACC_R      = 178,
+  ADDR_PROFILE_ACC_FL     = 174,
+  ADDR_PROFILE_ACC_FR     = 178,
+  ADDR_PROFILE_ACC_RL     = 179,
+  ADDR_PROFILE_ACC_RR     = 180,
 
   // Ultrasonic sensor addresses
   ADDR_ULTRASONIC_LEFT    = 190,
@@ -346,6 +364,9 @@ void TurtleBot3Core::begin(const char* model_name)
   }else if(strcmp(model_name, "Waffle_OpenManipulator") == 0){
     p_tb3_model_info = &waffle_with_manipulator_info;
     model_motor_rpm = 77;
+  }else if(strcmp(model_name, "FourWheel") == 0 || strcmp(model_name, "fourwheel") == 0){
+    p_tb3_model_info = &four_wheel_info;
+    model_motor_rpm = 77;
   }else{
     p_tb3_model_info = &burger_info;
     model_motor_rpm = 61;
@@ -452,12 +473,18 @@ void TurtleBot3Core::begin(const char* model_name)
   dxl_slave.addControlItem(ADDR_ORIENTATION_Y, control_items.orientation[2]);
   dxl_slave.addControlItem(ADDR_ORIENTATION_Z, control_items.orientation[3]);
   // Items to check status of motors
-  dxl_slave.addControlItem(ADDR_PRESENT_POSITION_L, control_items.present_position[MortorLocation::LEFT]);
-  dxl_slave.addControlItem(ADDR_PRESENT_POSITION_R, control_items.present_position[MortorLocation::RIGHT]);
-  dxl_slave.addControlItem(ADDR_PRESENT_VELOCITY_L, control_items.present_velocity[MortorLocation::LEFT]);
-  dxl_slave.addControlItem(ADDR_PRESENT_VELOCITY_R, control_items.present_velocity[MortorLocation::RIGHT]);
-  dxl_slave.addControlItem(ADDR_PRESENT_CURRENT_L, control_items.present_current[MortorLocation::LEFT]);
-  dxl_slave.addControlItem(ADDR_PRESENT_CURRENT_R, control_items.present_current[MortorLocation::RIGHT]);
+  dxl_slave.addControlItem(ADDR_PRESENT_POSITION_FL, control_items.present_position[MortorLocation::FRONT_LEFT]);
+  dxl_slave.addControlItem(ADDR_PRESENT_POSITION_FR, control_items.present_position[MortorLocation::FRONT_RIGHT]);
+  dxl_slave.addControlItem(ADDR_PRESENT_POSITION_RL, control_items.present_position[MortorLocation::REAR_LEFT]);
+  dxl_slave.addControlItem(ADDR_PRESENT_POSITION_RR, control_items.present_position[MortorLocation::REAR_RIGHT]);
+  dxl_slave.addControlItem(ADDR_PRESENT_VELOCITY_FL, control_items.present_velocity[MortorLocation::FRONT_LEFT]);
+  dxl_slave.addControlItem(ADDR_PRESENT_VELOCITY_FR, control_items.present_velocity[MortorLocation::FRONT_RIGHT]);
+  dxl_slave.addControlItem(ADDR_PRESENT_VELOCITY_RL, control_items.present_velocity[MortorLocation::REAR_LEFT]);
+  dxl_slave.addControlItem(ADDR_PRESENT_VELOCITY_RR, control_items.present_velocity[MortorLocation::REAR_RIGHT]);
+  dxl_slave.addControlItem(ADDR_PRESENT_CURRENT_FL, control_items.present_current[MortorLocation::FRONT_LEFT]);
+  dxl_slave.addControlItem(ADDR_PRESENT_CURRENT_FR, control_items.present_current[MortorLocation::FRONT_RIGHT]);
+  dxl_slave.addControlItem(ADDR_PRESENT_CURRENT_RL, control_items.present_current[MortorLocation::REAR_LEFT]);
+  dxl_slave.addControlItem(ADDR_PRESENT_CURRENT_RR, control_items.present_current[MortorLocation::REAR_RIGHT]);
   // Items to control motors
   dxl_slave.addControlItem(ADDR_MOTOR_CONNECT, control_items.is_connect_motors);
   dxl_slave.addControlItem(ADDR_MOTOR_TORQUE, control_items.motor_torque_enable_state);
@@ -467,8 +494,10 @@ void TurtleBot3Core::begin(const char* model_name)
   dxl_slave.addControlItem(ADDR_CMD_VEL_ANGULAR_X, control_items.cmd_vel_angular[0]);
   dxl_slave.addControlItem(ADDR_CMD_VEL_ANGULAR_Y, control_items.cmd_vel_angular[1]);
   dxl_slave.addControlItem(ADDR_CMD_VEL_ANGULAR_Z, control_items.cmd_vel_angular[2]);  
-  dxl_slave.addControlItem(ADDR_PROFILE_ACC_L, control_items.profile_acceleration[MortorLocation::LEFT]);
-  dxl_slave.addControlItem(ADDR_PROFILE_ACC_R, control_items.profile_acceleration[MortorLocation::RIGHT]);
+  dxl_slave.addControlItem(ADDR_PROFILE_ACC_FL, control_items.profile_acceleration[MortorLocation::FRONT_LEFT]);
+  dxl_slave.addControlItem(ADDR_PROFILE_ACC_FR, control_items.profile_acceleration[MortorLocation::FRONT_RIGHT]);
+  dxl_slave.addControlItem(ADDR_PROFILE_ACC_RL, control_items.profile_acceleration[MortorLocation::REAR_LEFT]);
+  dxl_slave.addControlItem(ADDR_PROFILE_ACC_RR, control_items.profile_acceleration[MortorLocation::REAR_RIGHT]);
 
   // Items for ultrasonic sensors
   dxl_slave.addControlItem(ADDR_ULTRASONIC_LEFT, control_items.ultrasonic_left);
@@ -767,7 +796,7 @@ void update_imu(uint32_t interval_ms)
 void update_motor_status(uint32_t interval_ms)
 {
   static uint32_t pre_time;
-  int16_t current_l, current_r;
+  int16_t current_fl, current_fr, current_rl, current_rr;
 
   if(millis() - pre_time >= interval_ms){
     pre_time = millis();
@@ -777,11 +806,19 @@ void update_motor_status(uint32_t interval_ms)
 
     pre_time_dxl = millis();
     if(get_connection_state_with_motors() == true){
-      motor_driver.read_present_position(control_items.present_position[MortorLocation::LEFT], control_items.present_position[MortorLocation::RIGHT]);
-      motor_driver.read_present_velocity(control_items.present_velocity[MortorLocation::LEFT], control_items.present_velocity[MortorLocation::RIGHT]);
-      if(motor_driver.read_present_current(current_l, current_r) == true){
-        control_items.present_current[MortorLocation::LEFT] = current_l;
-        control_items.present_current[MortorLocation::RIGHT] = current_r;
+      motor_driver.read_present_position(control_items.present_position[MortorLocation::FRONT_LEFT], 
+                                        control_items.present_position[MortorLocation::FRONT_RIGHT],
+                                        control_items.present_position[MortorLocation::REAR_LEFT], 
+                                        control_items.present_position[MortorLocation::REAR_RIGHT]);
+      motor_driver.read_present_velocity(control_items.present_velocity[MortorLocation::FRONT_LEFT], 
+                                        control_items.present_velocity[MortorLocation::FRONT_RIGHT],
+                                        control_items.present_velocity[MortorLocation::REAR_LEFT], 
+                                        control_items.present_velocity[MortorLocation::REAR_RIGHT]);
+      if(motor_driver.read_present_current(current_fl, current_fr, current_rl, current_rr) == true){
+        control_items.present_current[MortorLocation::FRONT_LEFT] = current_fl;
+        control_items.present_current[MortorLocation::FRONT_RIGHT] = current_fr;
+        control_items.present_current[MortorLocation::REAR_LEFT] = current_rl;
+        control_items.present_current[MortorLocation::REAR_RIGHT] = current_rr;
       }
 
       control_items.motor_torque_enable_state = motor_driver.get_torque();
@@ -852,10 +889,15 @@ static void dxl_slave_write_callback_func(uint16_t item_addr, uint8_t &dxl_err_c
       goal_velocity_from_cmd[VelocityType::ANGULAR] = constrain((float)(control_items.cmd_vel_angular[2]*0.01f), min_angular_velocity, max_angular_velocity);
       break;            
 
-    case ADDR_PROFILE_ACC_L:
-    case ADDR_PROFILE_ACC_R:
+    case ADDR_PROFILE_ACC_FL:
+    case ADDR_PROFILE_ACC_FR:
+    case ADDR_PROFILE_ACC_RL:
+    case ADDR_PROFILE_ACC_RR:
       if(get_connection_state_with_motors() == true)
-        motor_driver.write_profile_acceleration(control_items.profile_acceleration[MortorLocation::LEFT], control_items.profile_acceleration[MortorLocation::RIGHT]);
+        motor_driver.write_profile_acceleration(control_items.profile_acceleration[MortorLocation::FRONT_LEFT], 
+                                               control_items.profile_acceleration[MortorLocation::FRONT_RIGHT],
+                                               control_items.profile_acceleration[MortorLocation::REAR_LEFT], 
+                                               control_items.profile_acceleration[MortorLocation::REAR_RIGHT]);
       break;
 
     case ADDR_TORQUE_JOINT:
@@ -1040,33 +1082,36 @@ const float TEST_RADIAN = 3.14; // 180 degree
 void test_motors_with_buttons(uint8_t buttons)
 {
   static bool move[2] = {false, false};
-  static int32_t saved_tick[2] = {0, 0};
+  static int32_t saved_tick[4] = {0, 0, 0, 0};
   static double diff_encoder = 0.0;
 
-  int32_t current_tick[2] = {0, 0};
+  int32_t current_tick[4] = {0, 0, 0, 0};
 
   if(get_connection_state_with_motors() == true){
-    motor_driver.read_present_position(current_tick[MortorLocation::LEFT], current_tick[MortorLocation::RIGHT]);
+    motor_driver.read_present_position(current_tick[MortorLocation::FRONT_LEFT], 
+                                      current_tick[MortorLocation::FRONT_RIGHT],
+                                      current_tick[MortorLocation::REAR_LEFT], 
+                                      current_tick[MortorLocation::REAR_RIGHT]);
   }
 
   if (buttons & (1<<0))  
   {
     move[VelocityType::LINEAR] = true;
-    saved_tick[MortorLocation::RIGHT] = current_tick[MortorLocation::RIGHT];
+    saved_tick[MortorLocation::FRONT_RIGHT] = current_tick[MortorLocation::FRONT_RIGHT];
 
     diff_encoder = TEST_DISTANCE / (0.207 / 4096); // (Circumference of Wheel) / (The number of tick per revolution)
   }
   else if (buttons & (1<<1))
   {
     move[VelocityType::ANGULAR] = true;
-    saved_tick[MortorLocation::RIGHT] = current_tick[MortorLocation::RIGHT];
+    saved_tick[MortorLocation::FRONT_RIGHT] = current_tick[MortorLocation::FRONT_RIGHT];
 
     diff_encoder = (TEST_RADIAN * p_tb3_model_info->turning_radius) / (0.207 / 4096);
   }
 
   if (move[VelocityType::LINEAR])
   {    
-    if (abs(saved_tick[MortorLocation::RIGHT] - current_tick[MortorLocation::RIGHT]) <= diff_encoder)
+    if (abs(saved_tick[MortorLocation::FRONT_RIGHT] - current_tick[MortorLocation::FRONT_RIGHT]) <= diff_encoder)
     {
       goal_velocity_from_button[VelocityType::LINEAR]  = 0.05;
     }
@@ -1078,7 +1123,7 @@ void test_motors_with_buttons(uint8_t buttons)
   }
   else if (move[VelocityType::ANGULAR])
   {   
-    if (abs(saved_tick[MortorLocation::RIGHT] - current_tick[MortorLocation::RIGHT]) <= diff_encoder)
+    if (abs(saved_tick[MortorLocation::FRONT_RIGHT] - current_tick[MortorLocation::FRONT_RIGHT]) <= diff_encoder)
     {
       goal_velocity_from_button[VelocityType::ANGULAR]= -0.7;
     }

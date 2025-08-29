@@ -1,9 +1,10 @@
-# TurtleBot3 Sonic ROS
+# TurtleBot3 Sonic ROS (4-Wheel Version)
 
-TurtleBot3에 초음파 센서와 LED 피드백을 추가한 ROS2 펌웨어입니다.
+TurtleBot3에 초음파 센서와 LED 피드백을 추가하고, **4개 모터로 동작하도록 수정**한 ROS2 펌웨어입니다.
 
 ## 기능
 
+- **4개 모터 지원**: Front Left, Front Right, Rear Left, Rear Right 모터
 - **초음파 센서 3개**: 좌측, 전방, 우측 거리 측정
 - **RGB LED 피드백**: 초음파 센서 값에 따른 시각적 피드백
 - **DYNAMIXEL Slave Protocol**: 라즈베리파이와의 통신
@@ -12,8 +13,9 @@ TurtleBot3에 초음파 센서와 LED 피드백을 추가한 ROS2 펌웨어입�
 
 ## 하드웨어 요구사항
 
-- TurtleBot3 Burger/Waffle/Waffle Pi
+- TurtleBot3 Burger/Waffle/Waffle Pi (4개 모터 버전)
 - OpenCR 보드
+- DYNAMIXEL 모터 4개 (ID: 1, 2, 3, 4)
 - 초음파 센서 3개 (HC-SR04 또는 호환 모델)
 - RGB LED (선택사항)
 
@@ -31,9 +33,9 @@ TurtleBot3에 초음파 센서와 LED 피드백을 추가한 ROS2 펌웨어입�
   - Echo: D4
 
 ### RGB LED
-- **Red**: D8
-- **Green**: D9
-- **Blue**: D10
+- **Red**: D9
+- **Green**: D10
+- **Blue**: D11
 
 ## 프로젝트 구조
 
@@ -64,18 +66,64 @@ turtlebot3_sonic_Ros/
 
 ## Control Table 주소
 
-초음파 센서 데이터는 다음 주소에서 접근 가능합니다:
+### 모터 관련 주소 (4개 모터)
+- **ADDR_PRESENT_POSITION_FL** (136): Front Left 모터 현재 위치
+- **ADDR_PRESENT_POSITION_FR** (140): Front Right 모터 현재 위치
+- **ADDR_PRESENT_POSITION_RL** (141): Rear Left 모터 현재 위치
+- **ADDR_PRESENT_POSITION_RR** (142): Rear Right 모터 현재 위치
 
+- **ADDR_PRESENT_VELOCITY_FL** (128): Front Left 모터 현재 속도
+- **ADDR_PRESENT_VELOCITY_FR** (132): Front Right 모터 현재 속도
+- **ADDR_PRESENT_VELOCITY_RL** (133): Rear Left 모터 현재 속도
+- **ADDR_PRESENT_VELOCITY_RR** (134): Rear Right 모터 현재 속도
+
+- **ADDR_PRESENT_CURRENT_FL** (120): Front Left 모터 현재 전류
+- **ADDR_PRESENT_CURRENT_FR** (124): Front Right 모터 현재 전류
+- **ADDR_PRESENT_CURRENT_RL** (125): Rear Left 모터 현재 전류
+- **ADDR_PRESENT_CURRENT_RR** (126): Rear Right 모터 현재 전류
+
+- **ADDR_PROFILE_ACC_FL** (174): Front Left 모터 프로파일 가속도
+- **ADDR_PROFILE_ACC_FR** (178): Front Right 모터 프로파일 가속도
+- **ADDR_PROFILE_ACC_RL** (179): Rear Left 모터 프로파일 가속도
+- **ADDR_PROFILE_ACC_RR** (180): Rear Right 모터 프로파일 가속도
+
+### 초음파 센서 주소
 - **ADDR_ULTRASONIC_LEFT** (190): 좌측 센서 거리 (미터)
 - **ADDR_ULTRASONIC_FRONT** (194): 전방 센서 거리 (미터)
 - **ADDR_ULTRASONIC_RIGHT** (198): 우측 센서 거리 (미터)
 
 ## 라즈베리파이 연동
 
-라즈베리파이에서는 DYNAMIXEL Slave Protocol을 통해 초음파 센서 데이터에 접근할 수 있습니다:
+라즈베리파이에서는 DYNAMIXEL Slave Protocol을 통해 모터와 초음파 센서 데이터에 접근할 수 있습니다.
 
+### 4개 모터 제어 예시
 ```python
-# Python 예시
+# Python 예시 - 4개 모터 제어
+import rclpy
+from rclpy.node import Node
+from geometry_msgs.msg import Twist
+
+class FourWheelController(Node):
+    def __init__(self):
+        super().__init__('four_wheel_controller')
+        self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        
+    def move_forward(self, speed=0.2):
+        twist = Twist()
+        twist.linear.x = speed
+        twist.angular.z = 0.0
+        self.cmd_vel_pub.publish(twist)
+        
+    def turn_left(self, angular_speed=0.5):
+        twist = Twist()
+        twist.linear.x = 0.0
+        twist.angular.z = angular_speed
+        self.cmd_vel_pub.publish(twist)
+```
+
+### 초음파 센서 데이터 접근
+```python
+# Python 예시 - 초음파 센서
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Range
@@ -105,7 +153,36 @@ RGB LED는 초음파 센서 값에 따라 다음과 같이 동작합니다:
 - **노란색**: 주의 필요 (거리 0.3m ~ 0.5m)
 - **초록색**: 안전 (거리 > 0.5m)
 
+## 4개 모터 설정
+
+### 모터 ID 설정
+4개 모터의 ID는 다음과 같이 설정되어 있습니다:
+- **Front Left**: ID 1
+- **Front Right**: ID 2  
+- **Rear Left**: ID 3
+- **Rear Right**: ID 4
+
+### 모델 설정
+Arduino 코드에서 모델을 "FourWheel"로 설정해야 합니다:
+```cpp
+// turtlebot3_sonic_Ros.ino
+#define MODEL "FourWheel"
+```
+
+### 4-Wheel Differential Drive
+이 펌웨어는 4-wheel differential drive kinematics를 사용하여 4개 모터를 제어합니다. 각 모터의 속도는 다음과 같이 계산됩니다:
+
+- **Front Left**: `v_linear - v_angular * wheel_separation / 2`
+- **Front Right**: `v_linear + v_angular * wheel_separation / 2`
+- **Rear Left**: `v_linear - v_angular * wheel_separation / 2`
+- **Rear Right**: `v_linear + v_angular * wheel_separation / 2`
+
 ## 문제 해결
+
+### 모터가 연결되지 않는 경우
+1. 모터 ID가 올바르게 설정되었는지 확인하세요 (1, 2, 3, 4)
+2. 모터 전원이 공급되고 있는지 확인하세요
+3. 통신 케이블이 올바르게 연결되었는지 확인하세요
 
 ### 부저가 주기적으로 울리는 경우
 배터리 전압이 11.0V 미만으로 떨어져서 경고 알람이 울리고 있습니다. 배터리를 충전하세요.

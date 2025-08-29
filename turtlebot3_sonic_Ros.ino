@@ -21,8 +21,8 @@
 *******************************************************************************/
 void setup()
 {
-  // Begin TurtleBot3 core for support Burger.
-  TurtleBot3Core::begin("Burger");
+  // Begin TurtleBot3 core for support 4-wheel drive.
+  TurtleBot3Core::begin("FourWheel");
 }
 
 /*******************************************************************************
