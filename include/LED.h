@@ -19,3 +19,4 @@ const int RGB_B_PIN = 11;   // 예: PWM
 uint8_t distToPwm(float m);
 void updateRgbFromUltrasound();
 void setupRgbPins();   // 핀모드 설정용 (setup()에서 한 번 호출)
+void fadeToTarget();   // 부드러운 LED 전환 함수
