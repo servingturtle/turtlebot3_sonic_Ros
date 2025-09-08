@@ -145,14 +145,6 @@ class UltrasonicSubscriber(Node):
         self.get_logger().info(f'Right distance: {msg.range} m')
 ```
 
-## LED 피드백
-
-RGB LED는 초음파 센서 값에 따라 다음과 같이 동작합니다:
-
-- **빨간색**: 장애물이 가까움 (거리 < 0.3m)
-- **노란색**: 주의 필요 (거리 0.3m ~ 0.5m)
-- **초록색**: 안전 (거리 > 0.5m)
-
 ## 4개 모터 설정
 
 ### 모터 ID 설정

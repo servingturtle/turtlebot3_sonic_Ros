@@ -6,6 +6,7 @@ static uint8_t target_r = 0, target_g = 0, target_b = 0;
 static unsigned long last_update_time = 0;
 static const unsigned long UPDATE_INTERVAL = 100; // 100ms마다 업데이트
 static const uint8_t FADE_STEP = 5; // 한 번에 변경할 PWM 값
+static bool led_initialized = false;
 
 void setupRgbPins() {
   pinMode(RGB_R_PIN, OUTPUT);
@@ -18,6 +19,7 @@ void setupRgbPins() {
   // 초기값 설정
   current_r = current_g = current_b = 0;
   target_r = target_g = target_b = 0;
+  led_initialized = true;
 }
 
 // m(미터) -> PWM(0~255): 가까울수록 밝게 (LED용 50cm 최대)
@@ -42,6 +44,8 @@ uint8_t distToPwm(float m) {
 
 // 부드러운 LED 전환 함수
 void fadeToTarget() {
+  if (!led_initialized) return;
+  
   // Red 채널 부드러운 전환
   if (current_r < target_r) {
     current_r = min(current_r + FADE_STEP, target_r);
@@ -78,6 +82,8 @@ void fadeToTarget() {
 
 // RGB 출력 (센서: 0->R, 1->G, 2->B)
 void updateRgbFromUltrasound() {
+  if (!led_initialized) return;
+  
   unsigned long current_time = millis();
   
   // 업데이트 주기 제한
@@ -89,10 +95,15 @@ void updateRgbFromUltrasound() {
   
   last_update_time = current_time;
   
+  // 센서 값이 유효한지 확인하고 안전한 기본값 사용
+  float left_dist = (us[0].last_m > 0 && !isnan(us[0].last_m)) ? us[0].last_m : 1.0f;
+  float front_dist = (us[1].last_m > 0 && !isnan(us[1].last_m)) ? us[1].last_m : 1.0f;
+  float right_dist = (us[2].last_m > 0 && !isnan(us[2].last_m)) ? us[2].last_m : 1.0f;
+  
   // 새로운 목표값 계산
-  target_r = distToPwm(us[0].last_m);
-  target_g = distToPwm(us[1].last_m);
-  target_b = distToPwm(us[2].last_m);
+  target_r = distToPwm(left_dist);
+  target_g = distToPwm(front_dist);
+  target_b = distToPwm(right_dist);
   
   // 부드러운 전환 수행
   fadeToTarget();
